@@ -1,7 +1,8 @@
 # G2A Web Scraper
 
 ## Project Outline:
-    ### Features
+    
+### Features
 
     1. Guest Features:
         - Search for games by name or category.
