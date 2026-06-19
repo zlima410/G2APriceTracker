@@ -1,0 +1,23 @@
+{
+  "name": "g2a-webscraper",
+  "version": "1.0.0",
+  "description": "1. Guest Features:\r     - Search for games by name or category.\r     - View price history and current price data for games.",
+  "main": "scrape-one.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zlima410/G2A-webscraper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zlima410/G2A-webscraper/issues"
+  },
+  "homepage": "https://github.com/zlima410/G2A-webscraper#readme",
+  "dependencies": {
+    "axios": "^1.18.0"
+  }
+}
