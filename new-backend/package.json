@@ -18,6 +18,9 @@
   },
   "homepage": "https://github.com/zlima410/G2A-webscraper#readme",
   "dependencies": {
-    "axios": "^1.18.0"
+    "@supabase/supabase-js": "^2.108.2",
+    "axios": "^1.18.0",
+    "dotenv": "^17.4.2",
+    "fs": "^0.0.1-security"
   }
 }
