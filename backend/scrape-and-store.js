@@ -8,7 +8,7 @@ const STEAM_API_BASEURL = "https://store.steampowered.com/api/appdetails";
 
 async function scrapeGame(appid) {
   const response = await axios.get(STEAM_API_BASEURL, {
-    params: { appids: appid, cc: "us", 1: "en" },
+    params: { appids: appid, cc: "us", l: "en" },
     timeout: 10000,
   });
 

@@ -5,7 +5,7 @@ const FEATURED_URL = "https://store.steampowered.com/api/featuredcategories";
 
 async function fetchTopSellers() {
   const response = await axios.get(FEATURED_URL, {
-    params: { cc: "us", 1: "en" },
+    params: { cc: "us", l: "en" },
     timeout: 10000,
   });
 
