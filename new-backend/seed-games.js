@@ -2,7 +2,7 @@ require("dotenv").config();
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 async function main() {
   if (!fs.existsSync("top-sellers.json")) {
