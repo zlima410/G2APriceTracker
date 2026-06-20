@@ -2,7 +2,7 @@ name: Scrape Steam Prices
  
 on:
   schedule:
-    - cron: '0 16 * * *'
+    - cron: '0 12 * * *'
   workflow_dispatch: {}
  
 jobs:
@@ -18,11 +18,14 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+          cache-dependency-path: new-backend/package-lock.json
  
       - name: Install dependencies
+        working-directory: new-backend
         run: npm ci
  
       - name: Run scraper
+        working-directory: new-backend
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
