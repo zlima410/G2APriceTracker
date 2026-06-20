@@ -18,14 +18,14 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: new-backend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
  
       - name: Install dependencies
-        working-directory: new-backend
+        working-directory: backend
         run: npm ci
  
       - name: Run scraper
-        working-directory: new-backend
+        working-directory: backend
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
