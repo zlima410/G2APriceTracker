@@ -4,7 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "Steam Price Tracker",
+  title: "Game Signal",
   description: "Track Steam game price history and get notified on drops.",
 };
 

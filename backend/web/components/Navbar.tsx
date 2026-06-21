@@ -11,7 +11,7 @@ export default function Navbar() {
   return (
     <nav className="border-b px-8 py-4 flex justify-between items-center">
       <Link href="/" className="font-semibold">
-        Steam Price Tracker
+        Game Signal
       </Link>
 
       <div className="flex gap-4 items-center text-sm">
