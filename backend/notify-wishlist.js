@@ -78,7 +78,7 @@ async function sendNotificationEmail(email, items) {
     .join("\n");
 
   await resend.emails.send({
-    from: "updates.zlima.dev",
+    from: "noreply@updates.zlima.dev",
     to: email,
     subject: `Price drop on ${items.length} wishlisted game${items.length > 1 ? "s" : ""}`,
     text: `Good news — prices dropped on games you're tracking:\n\n${lines}\n\nHappy shopping!`,
