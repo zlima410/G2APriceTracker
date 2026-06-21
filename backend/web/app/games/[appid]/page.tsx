@@ -83,7 +83,10 @@ export default function GameDetailPage() {
       <h1 className="text-2xl font-semibold mt-2 mb-6">{game.title}</h1>
       <PriceChart snapshots={snapshots} />
       <div className="mt-6">
-        <WishlistButton gameId={game.id} />
+        <WishlistButton
+          gameId={game.id}
+          latestPriceCents={snapshots.length > 0 ? snapshots[snapshots.length - 1].price_cents : null}
+        />
       </div>
     </main>
   );

@@ -8,9 +8,16 @@ import { createClient } from "@/lib/supabase/client";
 type WishlistItem = {
   id: string;
   target_price_cents: number | null;
+  baseline_price_cents: number | null;
 };
 
-export default function WishlistButton({ gameId }: { gameId: string }) {
+export default function WishlistButton({
+  gameId,
+  latestPriceCents,
+}: {
+  gameId: string;
+  latestPriceCents: number | null;
+}) {
   const { session, loading: authLoading } = useAuth();
   const [item, setItem] = useState<WishlistItem | null>(null);
   const [targetPrice, setTargetPrice] = useState("");
@@ -29,7 +36,7 @@ export default function WishlistButton({ gameId }: { gameId: string }) {
       const supabase = await createClient();
       const { data, error } = await supabase
         .from("wishlist_items")
-        .select("id, target_price_cents")
+        .select("id, target_price_cents, baseline_price_cents")
         .eq("user_id", session!.user.id)
         .eq("game_id", gameId)
         .maybeSingle();
@@ -59,6 +66,7 @@ export default function WishlistButton({ gameId }: { gameId: string }) {
         user_id: session.user.id,
         game_id: gameId,
         target_price_cents: targetCents,
+        baseline_price_cents: latestPriceCents,
       })
       .select()
       .single();
@@ -75,6 +83,7 @@ export default function WishlistButton({ gameId }: { gameId: string }) {
     if (!item) return;
     setError(null);
 
+    const supabase = await createClient();
     const { error } = await supabase.from("wishlist_items").delete().eq("id", item.id);
 
     if (error) {
@@ -105,7 +114,9 @@ export default function WishlistButton({ gameId }: { gameId: string }) {
         <>
           <p className="text-sm mb-2">
             On your wishlist
-            {item.target_price_cents != null && ` — notify below $${(item.target_price_cents / 100).toFixed(2)}`}
+            {item.target_price_cents != null
+              ? ` — notify below $${(item.target_price_cents / 100).toFixed(2)}`
+              : " — notify on any price drop"}
           </p>
           <button onClick={handleRemove} className="text-sm text-red-600 hover:underline">
             Remove from wishlist
