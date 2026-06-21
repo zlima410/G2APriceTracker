@@ -6,7 +6,7 @@ import { Heart, Bell, Trash2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import Switch from "@/components/Switch";
-import { formatPrice, gameInitials } from "@/lib/utils";
+import { formatPrice, gameInitials, steamCapsuleUrl } from "@/lib/utils";
 
 type WishlistRow = {
   id: string;
@@ -20,6 +20,29 @@ type WishlistRow = {
 };
 
 type LatestPrice = { price_cents: number; currency: string | null };
+
+function GameThumbnail({ appid, title }: { appid: string; title: string }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  if (imgFailed) {
+    return (
+      <div
+        className="flex h-14 w-14 flex-none items-center justify-center rounded-lg border border-border bg-muted font-mono text-base font-semibold text-primary"
+        aria-hidden
+      >
+        {gameInitials(title) || "?"}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={steamCapsuleUrl(appid)}
+      alt=""
+      aria-hidden
+      onError={() => setImgFailed(true)}
+      className="h-14 w-37.25 flex-none rounded-lg border border-border object-cover"
+    />
+  );
+}
 
 export default function WishlistPage() {
   const { session, loading: authLoading } = useAuth();
@@ -188,17 +211,9 @@ export default function WishlistPage() {
                 className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 flex-none items-center justify-center rounded-lg border border-border bg-muted font-mono text-sm font-semibold text-primary"
-                    aria-hidden
-                  >
-                    {gameInitials(item.games.title) || "?"}
-                  </div>
+                  <GameThumbnail appid={item.games.appid} title={item.games.title} />
                   <div className="min-w-0">
-                    <Link
-                      href={`/games/${item.games.appid}`}
-                      className="block truncate font-medium hover:text-primary"
-                    >
+                    <Link href={`/games/${item.games.appid}`} className="block truncate font-medium hover:text-primary">
                       {item.games.title}
                     </Link>
                     {item.notifications_enabled && (
