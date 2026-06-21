@@ -38,9 +38,7 @@ export default function WishlistPage() {
     }
 
     async function load() {
-      // games(...) is a Supabase foreign-table select — pulls the related
-      // game row in the same query instead of a manual join.
-      const supabase = await createClient();
+      const supabase = createClient();
       const { data: wishlistRows, error: wishlistError } = await supabase
         .from("wishlist_items")
         .select("id, target_price_cents, games(id, appid, title)")
@@ -58,16 +56,13 @@ export default function WishlistPage() {
       if (rows.length > 0) {
         const gameIds = rows.map((r) => r.games.id);
         const { data: snapshotRows } = await supabase
-          .from("price_snapshots")
-          .select("game_id, price_cents, currency, scraped_at")
-          .in("game_id", gameIds)
-          .order("scraped_at", { ascending: false });
+          .from("latest_prices")
+          .select("game_id, price_cents, currency")
+          .in("game_id", gameIds);
 
         const latest: Record<string, LatestPrice> = {};
         for (const snap of snapshotRows ?? []) {
-          if (!latest[snap.game_id]) {
-            latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
-          }
+          latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
         }
         setPrices(latest);
       }
