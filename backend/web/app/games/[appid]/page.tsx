@@ -7,7 +7,7 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import PriceChart from "@/components/PriceChart";
 import WishlistButton from "@/components/WishlistButton";
-import { formatPrice, gameInitials } from "@/lib/utils";
+import { formatPrice, gameInitials, steamCapsuleUrl } from "@/lib/utils";
 
 type Game = {
   id: string;
@@ -32,6 +32,31 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "up
         {value}
       </p>
     </div>
+  );
+}
+
+function GameThumbnail({ appid, title }: { appid: string; title: string }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (imgFailed) {
+    return (
+      <div
+        className="flex h-16 w-16 flex-none items-center justify-center rounded-xl border border-border bg-muted font-mono text-xl font-semibold text-primary"
+        aria-hidden
+      >
+        {gameInitials(title) || "?"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={steamCapsuleUrl(appid)}
+      alt=""
+      aria-hidden
+      onError={() => setImgFailed(true)}
+      className="h-16 w-42.5 flex-none rounded-xl border border-border object-cover"
+    />
   );
 }
 
@@ -107,7 +132,7 @@ export default function GameDetailPage() {
             <div key={i} className="h-20 animate-pulse rounded-xl border border-border bg-card" />
           ))}
         </div>
-        <div className="mt-4 h-[360px] animate-pulse rounded-xl border border-border bg-card" />
+        <div className="mt-4 h-90 animate-pulse rounded-xl border border-border bg-card" />
       </main>
     );
   }
@@ -142,12 +167,7 @@ export default function GameDetailPage() {
 
       {/* Header */}
       <div className="mt-5 flex items-start gap-4">
-        <div
-          className="flex h-16 w-16 flex-none items-center justify-center rounded-xl border border-border bg-muted font-mono text-xl font-semibold text-primary"
-          aria-hidden
-        >
-          {gameInitials(game.title) || "?"}
-        </div>
+        <GameThumbnail appid={game.appid} title={game.title} />
         <div className="min-w-0 flex-1">
           <h1 className="text-balance text-2xl font-bold tracking-tight sm:text-3xl">{game.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Steam App {game.appid}</p>
