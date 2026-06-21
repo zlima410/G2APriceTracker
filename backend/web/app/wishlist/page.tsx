@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 type WishlistRow = {
   id: string;
   target_price_cents: number | null;
+  notifications_enabled: boolean;
   games: {
     id: string;
     appid: string;
@@ -38,10 +39,10 @@ export default function WishlistPage() {
     }
 
     async function load() {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: wishlistRows, error: wishlistError } = await supabase
         .from("wishlist_items")
-        .select("id, target_price_cents, games(id, appid, title)")
+        .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
         .eq("user_id", session!.user.id);
 
       if (wishlistError) {
@@ -117,13 +118,19 @@ export default function WishlistPage() {
           {items.map((item) => {
             const latest = prices[item.games.id];
             return (
-              <li key={item.id} className="py-3 flex justify-between items-center">
+              <li key={item.id} className="py-3 flex justify-between items-start">
                 <div>
                   <Link href={`/games/${item.games.appid}`} className="hover:underline">
                     {item.games.title}
                   </Link>
-                  {item.target_price_cents != null && (
-                    <p className="text-xs text-gray-500">Notify below ${(item.target_price_cents / 100).toFixed(2)}</p>
+                  {item.notifications_enabled ? (
+                    <p className="text-xs text-gray-500">
+                      {item.target_price_cents != null
+                        ? `Notify below $${(item.target_price_cents / 100).toFixed(2)}`
+                        : "Notify on any price drop"}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Notifications off</p>
                   )}
                 </div>
                 <div className="flex items-center gap-4">
