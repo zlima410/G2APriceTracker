@@ -127,7 +127,7 @@ export default function WishlistPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-gray-700">
+                  <span className="text-gray-700 pl-50">
                     {formatPrice(latest?.price_cents ?? null, latest?.currency ?? null)}
                   </span>
                   <button onClick={() => handleRemove(item.id)} className="text-sm text-red-600 hover:underline">

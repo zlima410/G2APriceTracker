@@ -124,7 +124,7 @@ export default function WishlistButton({
         </>
       ) : (
         <>
-          <label className="text-sm block mb-2">Notify me when price drops below (optional):</label>
+          <label className="text-sm block mb-2">Notify me when price drops below:</label>
           <div className="flex gap-2">
             <input
               type="number"
