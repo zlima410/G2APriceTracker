@@ -1,26 +1,101 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-up: var(--up);
+  --color-down: var(--down);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.75rem;
+
+  /* Dark, data-focused gaming aesthetic */
+  --background: #0a0e14;
+  --foreground: #e8edf2;
+
+  --card: #11161f;
+  --card-foreground: #e8edf2;
+
+  --muted: #1a212c;
+  --muted-foreground: #8b97a7;
+
+  --border: #1e2632;
+  --input: #1e2632;
+  --ring: #2dd4bf;
+
+  /* Teal/emerald accent — signals savings & deals */
+  --primary: #2dd4bf;
+  --primary-foreground: #04130f;
+
+  --accent: #14b8a6;
+  --accent-foreground: #04130f;
+
+  /* Price movement semantics */
+  --up: #f87171;   /* price went up = bad for buyers */
+  --down: #34d399; /* price dropped = good */
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    background-color: var(--background);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 30%, transparent);
   }
 }
 
-body {
+/* Subtle custom scrollbar to match the dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }

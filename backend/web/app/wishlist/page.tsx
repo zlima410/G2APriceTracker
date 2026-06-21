@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Heart, Bell, Trash2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import Switch from "@/components/Switch";
+import { formatPrice, gameInitials } from "@/lib/utils";
 
 type WishlistRow = {
   id: string;
@@ -18,12 +20,6 @@ type WishlistRow = {
 };
 
 type LatestPrice = { price_cents: number; currency: string | null };
-
-function formatPrice(cents: number | null, currency: string | null) {
-  if (cents === null) return "—";
-  if (cents === 0) return "Free";
-  return `$${(cents / 100).toFixed(2)} ${currency ?? ""}`.trim();
-}
 
 export default function WishlistPage() {
   const { session, loading: authLoading } = useAuth();
@@ -41,38 +37,42 @@ export default function WishlistPage() {
     }
 
     async function load() {
-      // games(...) is a Supabase foreign-table select — pulls the related
-      // game row in the same query instead of a manual join.
-      const supabase = await createClient();
-      const { data: wishlistRows, error: wishlistError } = await supabase
-        .from("wishlist_items")
-        .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
-        .eq("user_id", session!.user.id);
+      try {
+        // games(...) is a Supabase foreign-table select — pulls the related
+        // game row in the same query instead of a manual join.
+        const supabase = createClient();
+        const { data: wishlistRows, error: wishlistError } = await supabase
+          .from("wishlist_items")
+          .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
+          .eq("user_id", session!.user.id);
 
-      if (wishlistError) {
-        setError(wishlistError.message);
-        setLoading(false);
-        return;
-      }
-
-      const rows = (wishlistRows ?? []) as unknown as WishlistRow[];
-      setItems(rows);
-
-      if (rows.length > 0) {
-        const gameIds = rows.map((r) => r.games.id);
-        const { data: snapshotRows } = await supabase
-          .from("latest_prices")
-          .select("game_id, price_cents, currency")
-          .in("game_id", gameIds);
-
-        const latest: Record<string, LatestPrice> = {};
-        for (const snap of snapshotRows ?? []) {
-          latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
+        if (wishlistError) {
+          setError(wishlistError.message);
+          setLoading(false);
+          return;
         }
-        setPrices(latest);
-      }
 
-      setLoading(false);
+        const rows = (wishlistRows ?? []) as unknown as WishlistRow[];
+        setItems(rows);
+
+        if (rows.length > 0) {
+          const gameIds = rows.map((r) => r.games.id);
+          const { data: snapshotRows } = await supabase
+            .from("latest_prices")
+            .select("game_id, price_cents, currency")
+            .in("game_id", gameIds);
+
+          const latest: Record<string, LatestPrice> = {};
+          for (const snap of snapshotRows ?? []) {
+            latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
+          }
+          setPrices(latest);
+        }
+      } catch {
+        setError("Couldn't reach the price database. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
     }
 
     load();
@@ -103,60 +103,117 @@ export default function WishlistPage() {
   }
 
   if (authLoading || loading) {
-    return <main className="max-w-3xl mx-auto p-8">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <div className="h-8 w-40 animate-pulse rounded bg-muted" />
+        <div className="mt-8 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl border border-border bg-card" />
+          ))}
+        </div>
+      </main>
+    );
   }
 
   if (!session) {
     return (
-      <main className="max-w-3xl mx-auto p-8">
-        <p>
-          <Link href="/login" className="text-blue-600 hover:underline">
+      <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-16 text-center">
+          <Heart className="h-10 w-10 text-primary" />
+          <h1 className="mt-4 text-lg font-medium">Your wishlist is private</h1>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Sign in to track games and manage your price-drop alerts.
+          </p>
+          <Link
+            href="/login"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
+          >
             Sign in
-          </Link>{" "}
-          to see your wishlist.
-        </p>
+          </Link>
+        </div>
       </main>
     );
   }
 
   if (error) {
-    return <main className="max-w-3xl mx-auto p-8 text-red-600">Couldn&apos;t load your wishlist: {error}</main>;
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+        <div className="flex items-center gap-3 rounded-xl border border-up/30 bg-up/10 p-5 text-up">
+          <AlertCircle className="h-5 w-5 flex-none" />
+          <p className="text-sm">Couldn&apos;t load your wishlist: {error}</p>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold mb-6">My Wishlist</h1>
+    <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">My Wishlist</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {items.length} {items.length === 1 ? "game" : "games"} tracked
+          </p>
+        </div>
+      </div>
 
-      {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
+      {actionError && (
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-up/30 bg-up/10 p-3 text-sm text-up">
+          <AlertCircle className="h-4 w-4 flex-none" />
+          {actionError}
+        </div>
+      )}
 
       {items.length === 0 ? (
-        <p className="text-gray-500">
-          Nothing here yet —{" "}
-          <Link href="/" className="text-blue-600 hover:underline">
-            browse games
-          </Link>{" "}
-          to add some.
-        </p>
+        <div className="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-16 text-center">
+          <Heart className="h-10 w-10 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-medium">Nothing here yet</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Browse the catalog and add games you want to watch for price drops.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
+          >
+            Browse games
+          </Link>
+        </div>
       ) : (
-        <ul className="divide-y">
+        <ul className="mt-8 space-y-3">
           {items.map((item) => {
             const latest = prices[item.games.id];
             return (
-              <li key={item.id} className="py-3 flex justify-between items-start">
-                <div>
-                  <Link href={`/games/${item.games.appid}`} className="hover:underline">
-                    {item.games.title}
-                  </Link>
-                  {item.notifications_enabled && (
-                    <p className="text-xs text-gray-500">
-                      {item.target_price_cents != null
-                        ? `Notify below $${(item.target_price_cents / 100).toFixed(2)}`
-                        : "Notify on any price drop"}
-                    </p>
-                  )}
+              <li
+                key={item.id}
+                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className="flex h-12 w-12 flex-none items-center justify-center rounded-lg border border-border bg-muted font-mono text-sm font-semibold text-primary"
+                    aria-hidden
+                  >
+                    {gameInitials(item.games.title) || "?"}
+                  </div>
+                  <div className="min-w-0">
+                    <Link
+                      href={`/games/${item.games.appid}`}
+                      className="block truncate font-medium hover:text-primary"
+                    >
+                      {item.games.title}
+                    </Link>
+                    {item.notifications_enabled && (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Bell className="h-3 w-3" />
+                        {item.target_price_cents != null
+                          ? `Notify below $${(item.target_price_cents / 100).toFixed(2)}`
+                          : "Notify on any drop"}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-700 pl-50">
+
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                     {formatPrice(latest?.price_cents ?? null, latest?.currency ?? null)}
                   </span>
                   <div className="flex items-center gap-2">
@@ -165,11 +222,14 @@ export default function WishlistPage() {
                       onChange={(next) => handleToggleNotifications(item.id, next)}
                       label={`Notifications for ${item.games.title}`}
                     />
-                    <span className="text-xs text-gray-500">Notify</span>
+                    <button
+                      onClick={() => handleRemove(item.id)}
+                      aria-label={`Remove ${item.games.title} from wishlist`}
+                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-up"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button onClick={() => handleRemove(item.id)} className="text-sm text-red-600 hover:underline">
-                    Remove
-                  </button>
                 </div>
               </li>
             );

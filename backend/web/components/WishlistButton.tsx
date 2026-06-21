@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Heart, HeartOff, Bell, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
+import Switch from "@/components/Switch";
 
 type WishlistItem = {
   id: string;
@@ -103,71 +105,113 @@ export default function WishlistButton({
     setNotificationsEnabled(false);
   }
 
-  if (authLoading || loading) return null;
+  if (authLoading || loading) {
+    return <div className="h-32 animate-pulse rounded-xl border border-border bg-card" />;
+  }
 
   if (!session) {
     return (
-      <p className="text-sm text-gray-600">
-        <Link href="/login" className="text-blue-600 hover:underline">
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Heart className="h-5 w-5 text-primary" />
+          <p className="text-sm text-muted-foreground">Sign in to track this game and get price-drop alerts.</p>
+        </div>
+        <Link
+          href="/login"
+          className="inline-flex flex-none items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
+        >
           Sign in
-        </Link>{" "}
-        to add this game to your wishlist.
-      </p>
+        </Link>
+      </div>
+    );
+  }
+
+  if (item) {
+    return (
+      <div className="rounded-xl border border-primary/30 bg-card p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Check className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-medium">On your wishlist</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {item.notifications_enabled
+                  ? item.target_price_cents != null
+                    ? `We'll email you when it drops below $${(item.target_price_cents / 100).toFixed(2)}.`
+                    : "We'll email you on any price drop."
+                  : "Email notifications are off for this game."}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRemove}
+            className="inline-flex flex-none items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-up/40 hover:text-up"
+          >
+            <HeartOff className="h-4 w-4" />
+            <span className="hidden sm:inline">Remove</span>
+          </button>
+        </div>
+        {error && <p className="mt-3 text-sm text-up">{error}</p>}
+      </div>
     );
   }
 
   return (
-    <div className="border rounded p-4 max-w-sm">
-      {item ? (
-        <>
-          <p className="text-sm mb-2">
-            On your wishlist
-            {item.notifications_enabled
-              ? item.target_price_cents != null
-                ? ` — notify below $${(item.target_price_cents / 100).toFixed(2)}`
-                : " — notify on any price drop"
-              : " — email notifications off"}
-          </p>
-          <button onClick={handleRemove} className="text-sm text-red-600 hover:underline">
-            Remove from wishlist
-          </button>
-        </>
-      ) : (
-        <>
-          <label className="flex items-center gap-2 text-sm mb-2">
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={(e) => setNotificationsEnabled(e.target.checked)}
-            />
-            Email me about price drops
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-muted text-primary">
+            <Bell className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="font-medium">Email me about price drops</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Get notified the moment this game goes on sale.</p>
+          </div>
+        </div>
+        <Switch
+          checked={notificationsEnabled}
+          onChange={setNotificationsEnabled}
+          label="Enable email notifications"
+        />
+      </div>
+
+      {notificationsEnabled && (
+        <div className="mt-4 border-t border-border pt-4">
+          <label htmlFor="target-price" className="block text-sm font-medium">
+            Notify me when the price drops below
           </label>
-
-          {notificationsEnabled && (
-            <>
-              <label className="text-sm block mb-2">Notify me when price drops below (optional):</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g. 9.99"
-                  value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
-                  className="border rounded px-2 py-1 w-28 text-sm"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1 mb-2">Leave blank to get notified on any price drop.</p>
-            </>
-          )}
-
-          <button onClick={handleAdd} className="bg-black text-white rounded px-3 py-1 text-sm">
-            Add to wishlist
-          </button>
-        </>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                $
+              </span>
+              <input
+                id="target-price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="9.99"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                className="w-32 rounded-lg border border-input bg-background py-2 pl-7 pr-3 text-sm font-mono tabular-nums outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">Leave blank for any drop</span>
+          </div>
+        </div>
       )}
 
-      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+      <button
+        onClick={handleAdd}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent sm:w-auto"
+      >
+        <Heart className="h-4 w-4" />
+        Add to wishlist
+      </button>
+
+      {error && <p className="mt-3 text-sm text-up">{error}</p>}
     </div>
   );
 }
