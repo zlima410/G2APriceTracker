@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 type Game = {
   id: string;
@@ -14,13 +14,12 @@ type Snapshot = {
   game_id: string;
   price_cents: number;
   currency: string | null;
-  scraped_at: string;
 };
 
 type GameWithPrice = Game & { latestPriceCents: number | null; currency: string | null };
 
 function formatPrice(cents: number | null, currency: string | null) {
-  if (cents === null) return "-";
+  if (cents === null) return "—";
   if (cents === 0) return "Free";
   return `$${(cents / 100).toFixed(2)} ${currency ?? ""}`.trim();
 }
@@ -46,9 +45,8 @@ export default function BrowsePage() {
       }
 
       const { data: snapshotRows, error: snapshotError } = await supabase
-        .from("price_snapshots")
-        .select("game_id, price_cents, currency, scraped_at")
-        .order("scraped_at", { ascending: false });
+        .from("latest_prices")
+        .select("game_id, price_cents, currency");
 
       if (snapshotError) {
         setError(snapshotError.message);
@@ -58,9 +56,7 @@ export default function BrowsePage() {
 
       const latestByGame = new Map<string, Snapshot>();
       for (const snap of snapshotRows ?? []) {
-        if (!latestByGame.has(snap.game_id)) {
-          latestByGame.set(snap.game_id, snap);
-        }
+        latestByGame.set(snap.game_id, snap);
       }
 
       const merged: GameWithPrice[] = (gameRows ?? []).map((g) => {
@@ -82,7 +78,7 @@ export default function BrowsePage() {
   const filtered = games.filter((g) => g.title.toLowerCase().includes(search.toLowerCase()));
 
   if (loading) {
-    return <main className="max-w-3xl mx-auto p-8">Loading games...</main>;
+    return <main className="max-w-3xl mx-auto p-8">Loading games…</main>;
   }
 
   if (error) {
@@ -110,7 +106,7 @@ export default function BrowsePage() {
               <Link href={`/games/${g.appid}`} className="hover:underline">
                 {g.title}
               </Link>
-              <span className="text-gray-600">{formatPrice(g.latestPriceCents, g.currency)}</span>
+              <span className="text-gray-600 pl-50">{formatPrice(g.latestPriceCents, g.currency)}</span>
             </li>
           ))}
         </ul>

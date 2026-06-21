@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
+import Switch from "@/components/Switch";
 
 type WishlistRow = {
   id: string;
   target_price_cents: number | null;
+  notifications_enabled: boolean;
   games: {
     id: string;
     appid: string;
@@ -29,6 +31,7 @@ export default function WishlistPage() {
   const [prices, setPrices] = useState<Record<string, LatestPrice>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -43,7 +46,7 @@ export default function WishlistPage() {
       const supabase = await createClient();
       const { data: wishlistRows, error: wishlistError } = await supabase
         .from("wishlist_items")
-        .select("id, target_price_cents, games(id, appid, title)")
+        .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
         .eq("user_id", session!.user.id);
 
       if (wishlistError) {
@@ -58,16 +61,13 @@ export default function WishlistPage() {
       if (rows.length > 0) {
         const gameIds = rows.map((r) => r.games.id);
         const { data: snapshotRows } = await supabase
-          .from("price_snapshots")
-          .select("game_id, price_cents, currency, scraped_at")
-          .in("game_id", gameIds)
-          .order("scraped_at", { ascending: false });
+          .from("latest_prices")
+          .select("game_id, price_cents, currency")
+          .in("game_id", gameIds);
 
         const latest: Record<string, LatestPrice> = {};
         for (const snap of snapshotRows ?? []) {
-          if (!latest[snap.game_id]) {
-            latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
-          }
+          latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
         }
         setPrices(latest);
       }
@@ -82,6 +82,24 @@ export default function WishlistPage() {
     const supabase = await createClient();
     await supabase.from("wishlist_items").delete().eq("id", id);
     setItems((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  async function handleToggleNotifications(id: string, nextValue: boolean) {
+    // Optimistic update — flip it in the UI immediately, then persist.
+    // If the write fails, roll back so the switch doesn't lie about
+    // the actual saved state.
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notifications_enabled: nextValue } : i)));
+
+    const supabase = await createClient();
+    const { error: updateError } = await supabase
+      .from("wishlist_items")
+      .update({ notifications_enabled: nextValue })
+      .eq("id", id);
+
+    if (updateError) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notifications_enabled: !nextValue } : i)));
+      setActionError(`Couldn't update notification setting: ${updateError.message}`);
+    }
   }
 
   if (authLoading || loading) {
@@ -109,6 +127,8 @@ export default function WishlistPage() {
     <main className="max-w-3xl mx-auto p-8">
       <h1 className="text-2xl font-semibold mb-6">My Wishlist</h1>
 
+      {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
+
       {items.length === 0 ? (
         <p className="text-gray-500">
           Nothing here yet —{" "}
@@ -122,19 +142,31 @@ export default function WishlistPage() {
           {items.map((item) => {
             const latest = prices[item.games.id];
             return (
-              <li key={item.id} className="py-3 flex justify-between items-center">
+              <li key={item.id} className="py-3 flex justify-between items-start">
                 <div>
                   <Link href={`/games/${item.games.appid}`} className="hover:underline">
                     {item.games.title}
                   </Link>
-                  {item.target_price_cents != null && (
-                    <p className="text-xs text-gray-500">Notify below ${(item.target_price_cents / 100).toFixed(2)}</p>
+                  {item.notifications_enabled && (
+                    <p className="text-xs text-gray-500">
+                      {item.target_price_cents != null
+                        ? `Notify below $${(item.target_price_cents / 100).toFixed(2)}`
+                        : "Notify on any price drop"}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-gray-700">
+                  <span className="text-gray-700 pl-50">
                     {formatPrice(latest?.price_cents ?? null, latest?.currency ?? null)}
                   </span>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={item.notifications_enabled}
+                      onChange={(next) => handleToggleNotifications(item.id, next)}
+                      label={`Notifications for ${item.games.title}`}
+                    />
+                    <span className="text-xs text-gray-500">Notify</span>
+                  </div>
                   <button onClick={() => handleRemove(item.id)} className="text-sm text-red-600 hover:underline">
                     Remove
                   </button>
