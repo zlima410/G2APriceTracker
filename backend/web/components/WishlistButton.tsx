@@ -52,6 +52,7 @@ export default function WishlistButton({ gameId }: { gameId: string }) {
 
     const targetCents = targetPrice ? Math.round(parseFloat(targetPrice) * 100) : null;
 
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("wishlist_items")
       .insert({
