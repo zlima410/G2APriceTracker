@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, TrendingDown, Bell, LineChart, ArrowRight, Gamepad2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Game = {
   id: string;
@@ -29,44 +29,55 @@ export default function BrowsePage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = await createClient();
-      const { data: gameRows, error: gameError } = await supabase
-        .from("games")
-        .select("id, appid, title")
-        .order("title");
-
-      if (gameError) {
-        setError(gameError.message);
+      if (!isSupabaseConfigured) {
+        setError("backend-unconfigured");
         setLoading(false);
         return;
       }
 
-      const { data: snapshotRows, error: snapshotError } = await supabase
-        .from("latest_prices")
-        .select("game_id, price_cents, currency");
+      try {
+        const supabase = createClient();
+        const { data: gameRows, error: gameError } = await supabase
+          .from("games")
+          .select("id, appid, title")
+          .order("title");
 
-      if (snapshotError) {
-        setError(snapshotError.message);
+        if (gameError) {
+          setError(gameError.message);
+          setLoading(false);
+          return;
+        }
+
+        const { data: snapshotRows, error: snapshotError } = await supabase
+          .from("latest_prices")
+          .select("game_id, price_cents, currency");
+
+        if (snapshotError) {
+          setError(snapshotError.message);
+          setLoading(false);
+          return;
+        }
+
+        const latestByGame = new Map<string, Snapshot>();
+        for (const snap of snapshotRows ?? []) {
+          latestByGame.set(snap.game_id, snap);
+        }
+
+        const merged: GameWithPrice[] = (gameRows ?? []).map((g) => {
+          const snap = latestByGame.get(g.id);
+          return {
+            ...g,
+            latestPriceCents: snap ? snap.price_cents : null,
+            currency: snap ? snap.currency : null,
+          };
+        });
+
+        setGames(merged);
+      } catch {
+        setError("Couldn't reach the price database. Please try again later.");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const latestByGame = new Map<string, Snapshot>();
-      for (const snap of snapshotRows ?? []) {
-        latestByGame.set(snap.game_id, snap);
-      }
-
-      const merged: GameWithPrice[] = (gameRows ?? []).map((g) => {
-        const snap = latestByGame.get(g.id);
-        return {
-          ...g,
-          latestPriceCents: snap ? snap.price_cents : null,
-          currency: snap ? snap.currency : null,
-        };
-      });
-
-      setGames(merged);
-      setLoading(false);
     }
 
     load();
@@ -141,7 +152,11 @@ export default function BrowsePage() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Tracked games</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {loading ? "Loading catalog…" : `${games.length} games being tracked`}
+              {loading
+                ? "Loading catalog…"
+                : error
+                  ? "Live price tracking"
+                  : `${games.length} games being tracked`}
             </p>
           </div>
           <div className="relative w-full sm:w-80">
@@ -157,7 +172,16 @@ export default function BrowsePage() {
         </div>
 
         <div className="mt-8">
-          {error ? (
+          {error === "backend-unconfigured" ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-16 text-center">
+              <Gamepad2 className="h-10 w-10 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-medium">Catalog is warming up</h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                The price database isn&apos;t connected yet. Once it&apos;s live, tracked games and
+                their price history will appear here automatically.
+              </p>
+            </div>
+          ) : error ? (
             <div className="rounded-xl border border-up/30 bg-up/10 p-6 text-up">
               Couldn&apos;t load games: {error}
             </div>

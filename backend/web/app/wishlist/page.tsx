@@ -37,38 +37,42 @@ export default function WishlistPage() {
     }
 
     async function load() {
-      // games(...) is a Supabase foreign-table select — pulls the related
-      // game row in the same query instead of a manual join.
-      const supabase = await createClient();
-      const { data: wishlistRows, error: wishlistError } = await supabase
-        .from("wishlist_items")
-        .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
-        .eq("user_id", session!.user.id);
+      try {
+        // games(...) is a Supabase foreign-table select — pulls the related
+        // game row in the same query instead of a manual join.
+        const supabase = createClient();
+        const { data: wishlistRows, error: wishlistError } = await supabase
+          .from("wishlist_items")
+          .select("id, target_price_cents, notifications_enabled, games(id, appid, title)")
+          .eq("user_id", session!.user.id);
 
-      if (wishlistError) {
-        setError(wishlistError.message);
-        setLoading(false);
-        return;
-      }
-
-      const rows = (wishlistRows ?? []) as unknown as WishlistRow[];
-      setItems(rows);
-
-      if (rows.length > 0) {
-        const gameIds = rows.map((r) => r.games.id);
-        const { data: snapshotRows } = await supabase
-          .from("latest_prices")
-          .select("game_id, price_cents, currency")
-          .in("game_id", gameIds);
-
-        const latest: Record<string, LatestPrice> = {};
-        for (const snap of snapshotRows ?? []) {
-          latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
+        if (wishlistError) {
+          setError(wishlistError.message);
+          setLoading(false);
+          return;
         }
-        setPrices(latest);
-      }
 
-      setLoading(false);
+        const rows = (wishlistRows ?? []) as unknown as WishlistRow[];
+        setItems(rows);
+
+        if (rows.length > 0) {
+          const gameIds = rows.map((r) => r.games.id);
+          const { data: snapshotRows } = await supabase
+            .from("latest_prices")
+            .select("game_id, price_cents, currency")
+            .in("game_id", gameIds);
+
+          const latest: Record<string, LatestPrice> = {};
+          for (const snap of snapshotRows ?? []) {
+            latest[snap.game_id] = { price_cents: snap.price_cents, currency: snap.currency };
+          }
+          setPrices(latest);
+        }
+      } catch {
+        setError("Couldn't reach the price database. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
     }
 
     load();

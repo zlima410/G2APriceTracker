@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, AlertCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import PriceChart from "@/components/PriceChart";
 import WishlistButton from "@/components/WishlistButton";
 import { formatPrice, gameInitials } from "@/lib/utils";
@@ -44,34 +44,45 @@ export default function GameDetailPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = await createClient();
-      const { data: gameRow, error: gameError } = await supabase
-        .from("games")
-        .select("id, appid, title")
-        .eq("appid", params.appid)
-        .single();
-
-      if (gameError || !gameRow) {
-        setError(gameError?.message ?? "Game not found");
+      if (!isSupabaseConfigured) {
+        setError("The price database isn't connected yet. Check back soon.");
         setLoading(false);
         return;
       }
 
-      const { data: snapshotRows, error: snapshotError } = await supabase
-        .from("price_snapshots")
-        .select("price_cents, scraped_at")
-        .eq("game_id", gameRow.id)
-        .order("scraped_at", { ascending: true });
+      try {
+        const supabase = createClient();
+        const { data: gameRow, error: gameError } = await supabase
+          .from("games")
+          .select("id, appid, title")
+          .eq("appid", params.appid)
+          .single();
 
-      if (snapshotError) {
-        setError(snapshotError.message);
+        if (gameError || !gameRow) {
+          setError(gameError?.message ?? "Game not found");
+          setLoading(false);
+          return;
+        }
+
+        const { data: snapshotRows, error: snapshotError } = await supabase
+          .from("price_snapshots")
+          .select("price_cents, scraped_at")
+          .eq("game_id", gameRow.id)
+          .order("scraped_at", { ascending: true });
+
+        if (snapshotError) {
+          setError(snapshotError.message);
+          setLoading(false);
+          return;
+        }
+
+        setGame(gameRow);
+        setSnapshots(snapshotRows ?? []);
+      } catch {
+        setError("Couldn't reach the price database. Please try again later.");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setGame(gameRow);
-      setSnapshots(snapshotRows ?? []);
-      setLoading(false);
     }
 
     load();
