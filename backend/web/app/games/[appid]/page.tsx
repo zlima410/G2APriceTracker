@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import PriceChart from "@/components/PriceChart";
+import WishlistButton from "@/components/WishlistButton";
 
 type Game = {
   id: string;
@@ -81,6 +82,9 @@ export default function GameDetailPage() {
       </Link>
       <h1 className="text-2xl font-semibold mt-2 mb-6">{game.title}</h1>
       <PriceChart snapshots={snapshots} />
+      <div className="mt-6">
+        <WishlistButton gameId={game.id} />
+      </div>
     </main>
   );
 }
