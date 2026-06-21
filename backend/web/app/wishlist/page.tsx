@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
+import Switch from "@/components/Switch";
 
 type WishlistRow = {
   id: string;
@@ -30,6 +31,7 @@ export default function WishlistPage() {
   const [prices, setPrices] = useState<Record<string, LatestPrice>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,6 +41,8 @@ export default function WishlistPage() {
     }
 
     async function load() {
+      // games(...) is a Supabase foreign-table select — pulls the related
+      // game row in the same query instead of a manual join.
       const supabase = await createClient();
       const { data: wishlistRows, error: wishlistError } = await supabase
         .from("wishlist_items")
@@ -80,6 +84,24 @@ export default function WishlistPage() {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }
 
+  async function handleToggleNotifications(id: string, nextValue: boolean) {
+    // Optimistic update — flip it in the UI immediately, then persist.
+    // If the write fails, roll back so the switch doesn't lie about
+    // the actual saved state.
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notifications_enabled: nextValue } : i)));
+
+    const supabase = await createClient();
+    const { error: updateError } = await supabase
+      .from("wishlist_items")
+      .update({ notifications_enabled: nextValue })
+      .eq("id", id);
+
+    if (updateError) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notifications_enabled: !nextValue } : i)));
+      setActionError(`Couldn't update notification setting: ${updateError.message}`);
+    }
+  }
+
   if (authLoading || loading) {
     return <main className="max-w-3xl mx-auto p-8">Loading…</main>;
   }
@@ -105,6 +127,8 @@ export default function WishlistPage() {
     <main className="max-w-3xl mx-auto p-8">
       <h1 className="text-2xl font-semibold mb-6">My Wishlist</h1>
 
+      {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
+
       {items.length === 0 ? (
         <p className="text-gray-500">
           Nothing here yet —{" "}
@@ -123,20 +147,26 @@ export default function WishlistPage() {
                   <Link href={`/games/${item.games.appid}`} className="hover:underline">
                     {item.games.title}
                   </Link>
-                  {item.notifications_enabled ? (
+                  {item.notifications_enabled && (
                     <p className="text-xs text-gray-500">
                       {item.target_price_cents != null
                         ? `Notify below $${(item.target_price_cents / 100).toFixed(2)}`
                         : "Notify on any price drop"}
                     </p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Notifications off</p>
                   )}
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-gray-700 pl-50">
                     {formatPrice(latest?.price_cents ?? null, latest?.currency ?? null)}
                   </span>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={item.notifications_enabled}
+                      onChange={(next) => handleToggleNotifications(item.id, next)}
+                      label={`Notifications for ${item.games.title}`}
+                    />
+                    <span className="text-xs text-gray-500">Notify</span>
+                  </div>
                   <button onClick={() => handleRemove(item.id)} className="text-sm text-red-600 hover:underline">
                     Remove
                   </button>
