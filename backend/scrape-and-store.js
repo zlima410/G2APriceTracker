@@ -58,7 +58,7 @@ async function main() {
 
         succeeded++;
     } catch (err) {
-        console.error(`FAILED ${game.title} (appid ${game.appid}): ${err.mesage}`);
+        console.error(`FAILED ${game.title} (appid ${game.appid}): ${err.message}`);
         failed++;
     }
 
