@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, TrendingDown, Bell, LineChart, ArrowRight, Gamepad2 } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 
 type Game = {
   id: string;
@@ -22,6 +23,7 @@ type GameWithPrice = Game & { latestPriceCents: number | null; currency: string 
 import GameCard from "@/components/GameCard";
 
 export default function BrowsePage() {
+  const { session } = useAuth();
   const [games, setGames] = useState<GameWithPrice[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -122,10 +124,10 @@ export default function BrowsePage() {
               <ArrowRight className="h-4 w-4" />
             </a>
             <Link
-              href="/login"
+              href={session ? "/wishlist" : "/login"}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-3 font-semibold text-foreground transition-colors hover:bg-muted"
             >
-              Create free account
+              {session ? "View your wishlist" : "Create free account"}
             </Link>
           </div>
 
