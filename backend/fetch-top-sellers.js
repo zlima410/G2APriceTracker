@@ -1,71 +1,110 @@
 const axios = require("axios");
 const fs = require("fs");
+const { sleep, getWithRetry } = require("./request-utils");
 
-// - top100in2weeks: most-played in the last two weeks (keeps the list fresh)
-// - top100forever:  most-played all-time (keeps in well-known classics)
 const STEAMSPY_URL = "https://steamspy.com/api.php";
-const REQUESTS = ["top100in2weeks", "top100forever"];
+const STEAM_FEATURED_URL = "https://store.steampowered.com/api/featuredcategories";
 
-const REQUEST_DELAY_MS = 1100;
+const STEAMSPY_TOP_LISTS = ["top100in2weeks", "top100forever", "top100owned"];
 
-async function fetchSteamSpyList(request) {
-  const response = await axios.get(STEAMSPY_URL, {
-    params: { request },
+const STEAMSPY_TAGS = ["Action", "Indie", "RPG", "Strategy", "Adventure", "Simulation", "Sports", "Racing"];
+const TAG_SAMPLE_SIZE = 60;
+
+const MAX_GAMES = 300;
+
+// Bumped from 1100ms — SteamSpy's free API has no official rate limit
+// documentation, but is known to start returning 429s under sustained
+// rapid requests. Override via env var if you need to tune without
+// editing code.
+const REQUEST_DELAY_MS = Number(process.env.STEAMSPY_DELAY_MS) || 2000;
+
+async function fetchSteamSpyList(params) {
+  const response = await getWithRetry(axios, STEAMSPY_URL, {
+    params,
     timeout: 15000,
     headers: { "User-Agent": "g2a-webscraper/1.0 (personal project)" },
   });
 
-  // SteamSpy returns an object keyed by appid, not an array — normalize it.
   const data = response.data;
   if (!data || typeof data !== "object") {
-    throw new Error(`SteamSpy "${request}" returned an unexpected payload shape`);
+    throw new Error(`SteamSpy request ${JSON.stringify(params)} returned an unexpected payload shape`);
   }
 
   return Object.values(data);
 }
 
-async function fetchTopSellers() {
+async function fetchSteamSpecials() {
+  const response = await getWithRetry(axios, STEAM_FEATURED_URL, {
+    params: { cc: "us", l: "en" },
+    timeout: 15000,
+  });
+
+  const items = response.data?.specials?.items ?? [];
+  return items.map((item) => ({ appid: item.id, name: item.name }));
+}
+
+async function fetchAllSources() {
   const allItems = [];
 
-  for (const request of REQUESTS) {
+  try {
+    const specials = await fetchSteamSpecials();
+    console.log(`  steam specials: ${specials.length} games`);
+    allItems.push(...specials);
+  } catch (err) {
+    console.error(`  steam specials FAILED: ${err.message}`);
+  }
+
+  await sleep(REQUEST_DELAY_MS);
+
+  for (const request of STEAMSPY_TOP_LISTS) {
     try {
-      const items = await fetchSteamSpyList(request);
+      const items = await fetchSteamSpyList({ request });
       console.log(`  ${request}: ${items.length} games`);
       allItems.push(...items);
     } catch (err) {
       console.error(`  ${request} FAILED: ${err.message}`);
     }
+    await sleep(REQUEST_DELAY_MS);
+  }
 
-    await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS));
+  for (const tag of STEAMSPY_TAGS) {
+    try {
+      const items = await fetchSteamSpyList({ request: "tag", tag });
+      const sample = items.slice(0, TAG_SAMPLE_SIZE);
+      console.log(`  tag "${tag}": ${items.length} available, took ${sample.length}`);
+      allItems.push(...sample);
+    } catch (err) {
+      console.error(`  tag "${tag}" FAILED: ${err.message}`);
+    }
+    await sleep(REQUEST_DELAY_MS);
   }
 
   if (allItems.length === 0) {
-    throw new Error("No items found from any SteamSpy endpoint — API may be down or shape changed");
+    throw new Error("No items found from any source — APIs may be down or response shape changed");
   }
 
-  // Dedupe and normalize field names, same contract as before: {appid, title}.
   const seen = new Set();
   const games = [];
 
   for (const item of allItems) {
     const appid = item.appid;
     const title = item.name;
-    if (!appid || !title) continue; // skip malformed entries rather than crash
+    if (!appid || !title) continue;
     const appidStr = String(appid);
     if (seen.has(appidStr)) continue;
     seen.add(appidStr);
     games.push({ appid: appidStr, title });
   }
 
-  return games;
+  return games.slice(0, MAX_GAMES);
 }
 
 async function main() {
-  console.log("Fetching game lists from SteamSpy...");
-  const games = await fetchTopSellers();
+  console.log(`Fetching game lists from SteamSpy + Steam specials (delay: ${REQUEST_DELAY_MS}ms)...`);
+  const games = await fetchAllSources();
 
-  console.log(`\nFetched ${games.length} unique games.`);
-  console.log(games.slice(0, 5)); // sanity check first few
+  console.log(`\nFetched ${games.length} unique games (capped at ${MAX_GAMES}).`);
+  console.log(games.slice(0, 5));
 
   fs.writeFileSync("top-sellers.json", JSON.stringify(games, null, 2));
   console.log("Saved to top-sellers.json");

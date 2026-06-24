@@ -100,7 +100,7 @@ export default function BrowsePage() {
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background"
+          className="pointer-events-none absolute inset-0 bg-linear-to-b from-background/40 via-background/80 to-background"
           aria-hidden
         />
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
@@ -190,7 +190,7 @@ export default function BrowsePage() {
           ) : loading ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[84px] animate-pulse rounded-xl border border-border bg-card" />
+                <div key={i} className="h-21 animate-pulse rounded-xl border border-border bg-card" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
